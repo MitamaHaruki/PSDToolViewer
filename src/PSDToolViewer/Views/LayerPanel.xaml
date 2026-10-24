@@ -1,0 +1,163 @@
+<UserControl x:Class="PSDToolViewer.Views.LayerPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:PSDToolViewer.ViewModels">
+    <Grid Background="{DynamicResource App.PanelBackground}">
+        <ItemsControl x:Name="List"
+                      ItemsSource="{Binding Rows}"
+                      Focusable="True"
+                      FocusVisualStyle="{x:Null}"
+                      AllowDrop="True"
+                      Background="Transparent"
+                      Padding="0,4"
+                      VirtualizingPanel.IsVirtualizing="True"
+                      VirtualizingPanel.VirtualizationMode="Recycling"
+                      VirtualizingPanel.ScrollUnit="Pixel"
+                      ScrollViewer.CanContentScroll="True"
+                      PreviewMouseLeftButtonDown="List_PreviewMouseLeftButtonDown"
+                      PreviewMouseMove="List_PreviewMouseMove"
+                      PreviewMouseLeftButtonUp="List_PreviewMouseLeftButtonUp"
+                      PreviewMouseRightButtonDown="List_PreviewMouseRightButtonDown"
+                      ContextMenuOpening="List_ContextMenuOpening"
+                      KeyDown="List_KeyDown"
+                      DragEnter="List_DragOver"
+                      DragOver="List_DragOver"
+                      DragLeave="List_DragLeave"
+                      Drop="List_Drop">
+            <ItemsControl.Template>
+                <ControlTemplate TargetType="ItemsControl">
+                    <ScrollViewer x:Name="PART_ScrollViewer" Focusable="False" CanContentScroll="True"
+                                  HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                                  Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}">
+                        <ItemsPresenter />
+                    </ScrollViewer>
+                </ControlTemplate>
+            </ItemsControl.Template>
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <VirtualizingStackPanel />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="ラジオボタン切替" Command="{Binding ToggleRadioCommand}" InputGestureText="Ctrl+R">
+                        <MenuItem.Icon>
+                            <TextBlock Text="&#xECCB;" FontFamily="{StaticResource IconFont}" FontSize="14" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="強制表示切替" Command="{Binding ToggleForcedCommand}" InputGestureText="Ctrl+F">
+                        <MenuItem.Icon>
+                            <TextBlock Text="&#xE718;" FontFamily="{StaticResource IconFont}" FontSize="14" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <Separator />
+                    <MenuItem Header="名前の変更" Command="{Binding RenameCommand}" InputGestureText="F2">
+                        <MenuItem.Icon>
+                            <TextBlock Text="&#xE8AC;" FontFamily="{StaticResource IconFont}" FontSize="14" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="削除" Command="{Binding DeleteCommand}" InputGestureText="Delete">
+                        <MenuItem.Icon>
+                            <TextBlock Text="&#xE74D;" FontFamily="{StaticResource IconFont}" FontSize="14" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <Separator />
+                    <MenuItem Header="フォルダを作成" Command="{Binding CreateFolderCommand}" InputGestureText="Ctrl+Shift+N">
+                        <MenuItem.Icon>
+                            <TextBlock Text="&#xE8F4;" FontFamily="{StaticResource IconFont}" FontSize="14" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                </ContextMenu>
+            </ItemsControl.ContextMenu>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type vm:LayerRow}">
+                    <Border x:Name="RowBorder" Margin="4,0" CornerRadius="4" Background="Transparent"
+                            Height="{Binding DataContext.RowHeight, RelativeSource={RelativeSource AncestorType=ItemsControl}}">
+                        <Grid Margin="{Binding Indent}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="22" />
+                                <ColumnDefinition Width="24" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <ToggleButton Style="{StaticResource RowExpanderStyle}" IsChecked="{Binding IsExpanded}"
+                                          Visibility="{Binding IsGroup, Converter={StaticResource BoolToVisibility}}" />
+
+                            <Grid Grid.Column="1">
+                                <CheckBox x:Name="Check" Style="{StaticResource RowCheckBoxStyle}" IsChecked="{Binding IsChecked}"
+                                          Visibility="Collapsed" ToolTip="表示／非表示" />
+                                <RadioButton x:Name="Radio" Style="{StaticResource RowRadioStyle}" IsChecked="{Binding IsChecked}"
+                                             Visibility="Collapsed" ToolTip="同じ階層のラジオボタンのうち 1 つを表示" />
+                                <TextBlock x:Name="Pin" Text="&#xE718;" FontFamily="{StaticResource IconFont}" FontSize="12"
+                                           Foreground="{DynamicResource App.TextTertiary}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Visibility="Collapsed" ToolTip="強制表示（常に表示）" />
+                            </Grid>
+
+                            <Border x:Name="ThumbBox" Grid.Column="2" Width="28" Height="28" Margin="2,0,6,0" CornerRadius="3"
+                                    Background="{DynamicResource App.ThumbnailCheckerBrush}" BorderBrush="{DynamicResource App.Divider}" BorderThickness="1"
+                                    Visibility="{Binding DataContext.ShowThumbnails, RelativeSource={RelativeSource AncestorType=ItemsControl}, Converter={StaticResource BoolToVisibility}}">
+                                <Grid>
+                                    <Image x:Name="ThumbImage" Source="{Binding Thumbnail}" Stretch="Uniform" Margin="1"
+                                           RenderOptions.BitmapScalingMode="HighQuality" />
+                                    <TextBlock x:Name="FolderGlyph" Text="&#xE8B7;" FontFamily="{StaticResource IconFont}" FontSize="18"
+                                               Foreground="{DynamicResource App.TextSecondary}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Visibility="Collapsed" />
+                                </Grid>
+                            </Border>
+
+                            <TextBlock x:Name="NameText" Grid.Column="3" Text="{Binding DisplayName}" VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis" Margin="0,0,6,0" />
+                            <TextBox x:Name="NameEditor" Grid.Column="3" Text="{Binding EditName, UpdateSourceTrigger=PropertyChanged}"
+                                     VerticalAlignment="Center" Margin="0,0,6,0" Padding="4,2" MinHeight="0" MinWidth="0"
+                                     Visibility="Collapsed"
+                                     KeyDown="NameEditor_KeyDown"
+                                     LostKeyboardFocus="NameEditor_LostKeyboardFocus" />
+                        </Grid>
+                    </Border>
+                    <DataTemplate.Triggers>
+                        <DataTrigger Binding="{Binding ToggleKind}" Value="CheckBox">
+                            <Setter TargetName="Check" Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding ToggleKind}" Value="Radio">
+                            <Setter TargetName="Radio" Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding ToggleKind}" Value="Forced">
+                            <Setter TargetName="Pin" Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsGroup}" Value="True">
+                            <Setter TargetName="ThumbBox" Property="Background" Value="Transparent" />
+                            <Setter TargetName="ThumbBox" Property="BorderThickness" Value="0" />
+                            <Setter TargetName="ThumbImage" Property="Visibility" Value="Collapsed" />
+                            <Setter TargetName="FolderGlyph" Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                        <Trigger SourceName="RowBorder" Property="IsMouseOver" Value="True">
+                            <Setter TargetName="RowBorder" Property="Background" Value="{DynamicResource App.SubtleHover}" />
+                        </Trigger>
+                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                            <Setter TargetName="RowBorder" Property="Background" Value="{DynamicResource App.Selection}" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsEffectivelyVisible}" Value="False">
+                            <Setter TargetName="NameText" Property="Opacity" Value="0.5" />
+                            <Setter TargetName="ThumbBox" Property="Opacity" Value="0.5" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                            <Setter TargetName="NameText" Property="Visibility" Value="Collapsed" />
+                            <Setter TargetName="NameEditor" Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </DataTemplate.Triggers>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- ドロップ位置の表示 -->
+        <Canvas x:Name="DropOverlay" IsHitTestVisible="False">
+            <Border x:Name="DropLine" Height="2" CornerRadius="1" Background="{DynamicResource App.Accent}" Visibility="Collapsed" />
+            <Border x:Name="DropBox" BorderThickness="2" CornerRadius="4" BorderBrush="{DynamicResource App.Accent}" Visibility="Collapsed" />
+        </Canvas>
+
+        <TextBlock x:Name="EmptyText" Text="PSD・PNG・フォルダを開くか、&#x0a;ここにドロップしてください"
+                   TextAlignment="Center" HorizontalAlignment="Center" VerticalAlignment="Center"
+                   Foreground="{DynamicResource App.TextTertiary}" IsHitTestVisible="False" />
+    </Grid>
+</UserControl>

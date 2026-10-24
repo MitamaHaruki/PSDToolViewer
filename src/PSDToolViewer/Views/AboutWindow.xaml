@@ -1,0 +1,47 @@
+<Window x:Class="PSDToolViewer.Views.AboutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="バージョン情報" Width="440" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{DynamicResource App.WindowBackground}" Foreground="{DynamicResource App.Text}"
+        FontFamily="Yu Gothic UI, Segoe UI" FontSize="13">
+    <StackPanel Margin="24,22,24,20">
+        <StackPanel Orientation="Horizontal">
+            <Image Source="/Assets/AppIcon.png" Width="64" Height="64" RenderOptions.BitmapScalingMode="HighQuality" />
+            <StackPanel Margin="16,0,0,0" VerticalAlignment="Center">
+                <TextBlock Text="PSDTool Viewer" FontSize="22" FontWeight="SemiBold" />
+                <TextBlock x:Name="VersionText" Foreground="{DynamicResource App.TextSecondary}" Margin="0,2,0,0" />
+            </StackPanel>
+        </StackPanel>
+
+        <TextBlock Text="PSDTool 形式で構成された PSD ファイルを表示・編集するアプリケーションです。"
+                   TextWrapping="Wrap" Margin="0,18,0,0" />
+
+        <Grid Margin="0,16,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <TextBlock Text="製作者：" Foreground="{DynamicResource App.TextSecondary}" Margin="0,0,8,6" />
+            <TextBlock Grid.Column="1" Text="三玉春樹 / はるたまプロジェクト" Margin="0,0,0,6" />
+            <TextBlock Grid.Row="1" Text="アカウント：" Foreground="{DynamicResource App.TextSecondary}" Margin="0,0,8,0" />
+            <TextBlock Grid.Row="1" Grid.Column="1">
+                <Hyperlink NavigateUri="https://x.com/MitamaHaruki" RequestNavigate="Hyperlink_RequestNavigate"
+                           Foreground="{DynamicResource App.Accent}">https://x.com/MitamaHaruki</Hyperlink>
+            </TextBlock>
+        </Grid>
+
+        <Border BorderThickness="0,1,0,0" BorderBrush="{DynamicResource App.Divider}" Margin="0,18,0,0" Padding="0,12,0,0">
+            <StackPanel>
+                <TextBlock Text="MIT License" Foreground="{DynamicResource App.TextSecondary}" FontSize="12" />
+                <TextBlock Text="使用ライブラリ：Velopack（MIT License）" Foreground="{DynamicResource App.TextSecondary}" FontSize="12" Margin="0,2,0,0" />
+            </StackPanel>
+        </Border>
+
+        <Button Content="閉じる" MinWidth="88" HorizontalAlignment="Right" IsCancel="True" IsDefault="True" Margin="0,18,0,0" />
+    </StackPanel>
+</Window>

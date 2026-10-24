@@ -1,0 +1,13 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Version>0.1.0</Version>
+    <Authors>MitamaHaruki</Authors>
+    <Company>はるたまプロジェクト</Company>
+    <Product>PSDTool Viewer</Product>
+    <Copyright>Copyright (c) 2026 三玉春樹 / はるたまプロジェクト</Copyright>
+    <SatelliteResourceLanguages>ja</SatelliteResourceLanguages>
+  </PropertyGroup>
+</Project>
