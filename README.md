@@ -11,7 +11,7 @@ PSDTool 形式で構成された PSD ファイルを読み込み、表示・編�
 - 埋め込みの色プロファイル（Display P3、Adobe RGB など）を sRGB に変換して表示
 - GitHub Releases による自動更新（インストール版）
 
-詳しい仕様は [docs/SPEC.md](docs/SPEC.md) を参照してください。
+詳しい仕様は [docs/SPEC.md](docs/SPEC.md) を参照してください。`.ptv` ファイルをほかのアプリで読み込む場合は [docs/PTV_FORMAT.md](docs/PTV_FORMAT.md) を参照してください。
 
 ## 動作環境
 
