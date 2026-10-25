@@ -15,15 +15,19 @@ public sealed class ThumbnailService(Dispatcher dispatcher)
 
     private readonly SemaphoreSlim _gate = new(Math.Max(1, Environment.ProcessorCount / 2));
 
+    /// <summary>表示用の色変換（ドキュメントの色プロファイル → sRGB）。不要なら null。</summary>
+    public ColorTransform? Transform { get; set; }
+
     public void Request(LayerRow row)
     {
         if (row.Node is not LayerItem { Image: var image }) return;
+        var transform = Transform;
         _ = Task.Run(async () =>
         {
             await _gate.WaitAsync().ConfigureAwait(false);
             try
             {
-                var bitmap = Create(image);
+                var bitmap = Create(image, transform);
                 await dispatcher.InvokeAsync(() => row.Thumbnail = bitmap, DispatcherPriority.Background);
             }
             finally
@@ -34,7 +38,7 @@ public sealed class ThumbnailService(Dispatcher dispatcher)
     }
 
     /// <summary>不透明部分を枠いっぱいに縮小する（面積平均）。</summary>
-    public static BitmapSource? Create(PixelImage image)
+    public static BitmapSource? Create(PixelImage image, ColorTransform? transform = null)
     {
         var bounds = image.OpaqueBounds;
         if (bounds.IsEmpty) return null;
@@ -78,6 +82,7 @@ public sealed class ThumbnailService(Dispatcher dispatcher)
             }
         }
 
+        transform?.ApplyPremultiplied(dst, dst, tw, th);
         var bitmap = BitmapSource.Create(tw, th, 96, 96, PixelFormats.Pbgra32, null, dst, tw * 4);
         bitmap.Freeze();
         return bitmap;

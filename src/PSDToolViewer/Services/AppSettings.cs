@@ -28,6 +28,12 @@ public sealed class AppSettings
     public ThemeSetting Theme { get; set; } = ThemeSetting.System;
     public PreviewBackgroundKind PreviewBackground { get; set; } = PreviewBackgroundKind.Checker;
     public bool CheckUpdatesOnStartup { get; set; } = true;
+
+    /// <summary>
+    /// GPU を使わずに描画する。ARM 版 Windows の一部の端末で GPU 描画すると画像の赤と青が入れ替わるため（dotnet/wpf#11847）、
+    /// 初期設定はオン。
+    /// </summary>
+    public bool SoftwareRendering { get; set; } = true;
     public bool TrimTransparent { get; set; }
     public double LayerPanelWidth { get; set; } = 300;
 

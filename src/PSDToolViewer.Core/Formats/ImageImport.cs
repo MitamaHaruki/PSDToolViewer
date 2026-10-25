@@ -11,10 +11,14 @@ public sealed record ImportedLayer(LayerItem Layer, int CanvasWidth, int CanvasH
 /// <summary>PNG ファイル・フォルダの読み込み。</summary>
 public static partial class ImageImport
 {
-    /// <summary>PNG を読み込み、透明な余白を除いたレイヤーにする（位置は左上基準のまま）。</summary>
-    public static ImportedLayer LoadPng(string path)
+    /// <summary>
+    /// PNG を読み込み、透明な余白を除いたレイヤーにする（位置は左上基準のまま）。
+    /// 埋め込みの色プロファイルは sRGB に変換し、<paramref name="toDocument"/> があればさらにドキュメントの色空間に合わせる。
+    /// </summary>
+    public static ImportedLayer LoadPng(string path, ColorTransform? toDocument = null)
     {
-        var image = PngCodec.Decode(path);
+        var image = PngCodec.Decode(path, convertToSrgb: true);
+        if (toDocument is not null) image = toDocument.Apply(image);
         return new ImportedLayer(CreateLayer(Path.GetFileNameWithoutExtension(path), image), image.Width, image.Height);
     }
 
@@ -51,7 +55,7 @@ public static partial class ImageImport
         {
             try
             {
-                entry.Image = PngCodec.Decode(entry.Path);
+                entry.Image = PngCodec.Decode(entry.Path, convertToSrgb: true);
             }
             catch (DocumentFormatException ex)
             {

@@ -23,6 +23,12 @@ public sealed class LayerDocument
     /// <summary>PSD から引き継ぐ画像リソース（解像度・カラープロファイル）。</summary>
     public IReadOnlyList<ImageResource> ImageResources { get; set; } = [];
 
+    /// <summary>ICC プロファイルの画像リソースの ID。</summary>
+    public const ushort IccProfileResourceId = 0x040F;
+
+    /// <summary>埋め込まれた色プロファイル（ICC）。null のときは sRGB とみなす。</summary>
+    public byte[]? ColorProfile => ImageResources.FirstOrDefault(r => r.Id == IccProfileResourceId)?.Data;
+
     /// <summary>再現できない要素（調整レイヤー・レイヤー効果など）を含む PSD を読み込んだか。</summary>
     public bool HasUnsupportedFeatures { get; set; }
 

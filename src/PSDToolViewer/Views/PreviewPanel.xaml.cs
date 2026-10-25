@@ -9,7 +9,8 @@ using PSDToolViewer.ViewModels;
 namespace PSDToolViewer.Views;
 
 /// <summary>
-/// プレビュー。Ctrl＋ホイールで拡大縮小、中ボタンまたは Space＋ドラッグで移動、左ドラッグで画像を外へドラッグする。
+/// プレビュー。ホイールまたは 2 本指のピンチで拡大縮小、中ボタン・Space＋ドラッグ・2 本指で移動、
+/// 左ドラッグ（1 本指）で画像を外へドラッグする。
 /// </summary>
 public partial class PreviewPanel : UserControl
 {
@@ -34,6 +35,15 @@ public partial class PreviewPanel : UserControl
     private bool _spacePressed;
     private bool _maybeDrag;
     private Point _dragStart;
+
+    // 2 本指のピンチ
+    private readonly List<TouchDevice> _touches = [];
+    private readonly Dictionary<int, Point> _touchPositions = [];
+    private bool _pinching;
+    private bool _suppressTouch;
+    private double _pinchStartDistance;
+    private double _pinchStartZoom;
+    private Point _pinchImagePoint;
 
     public PreviewPanel()
     {
@@ -192,16 +202,8 @@ public partial class PreviewPanel : UserControl
         base.OnMouseWheel(e);
         if (_imageWidth == 0) return;
         e.Handled = true;
-        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
-        {
-            ZoomAt(_zoom * Math.Pow(1.0015, e.Delta), e.GetPosition(Host));
-            return;
-        }
-        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) _offset.X += e.Delta * 0.5;
-        else _offset.Y += e.Delta * 0.5;
-        _fit = false;
-        ClampOffset();
-        UpdateTransform();
+        // ホイールでマウス位置を中心に拡大縮小する（タッチパッドのピンチも Ctrl＋ホイールとして届く）
+        ZoomAt(_zoom * Math.Pow(1.0015, e.Delta), e.GetPosition(Host));
     }
 
     protected override void OnMouseDown(MouseButtonEventArgs e)
@@ -248,16 +250,117 @@ public partial class PreviewPanel : UserControl
             UpdateTransform();
             return;
         }
-        if (_maybeDrag && e.LeftButton == MouseButtonState.Pressed)
+        if (_maybeDrag && !_pinching && e.LeftButton == MouseButtonState.Pressed)
         {
             var delta = position - _dragStart;
-            if (Math.Abs(delta.X) >= SystemParameters.MinimumHorizontalDragDistance ||
-                Math.Abs(delta.Y) >= SystemParameters.MinimumVerticalDragDistance)
+            // 指の場合は、ピンチの 2 本目が触れる前に書き出しが始まらないよう少し大きく動かしたときだけ始める
+            double threshold = e.StylusDevice is null ? SystemParameters.MinimumHorizontalDragDistance : TouchDragThreshold;
+            if (Math.Abs(delta.X) >= threshold || Math.Abs(delta.Y) >= threshold)
             {
                 _maybeDrag = false;
                 StartDragOut();
             }
         }
+    }
+
+    // ---- タッチ操作（2 本指で拡大縮小・移動） ----
+
+    private const double TouchDragThreshold = 16;
+
+    protected override void OnTouchDown(TouchEventArgs e)
+    {
+        base.OnTouchDown(e);
+        if (!_touches.Contains(e.TouchDevice)) _touches.Add(e.TouchDevice);
+        _touchPositions[e.TouchDevice.Id] = e.GetTouchPoint(Host).Position;
+        if (_touches.Count >= 2 && _imageWidth > 0)
+        {
+            BeginPinch();
+            e.Handled = true;
+        }
+        else if (_suppressTouch)
+        {
+            e.Handled = true;
+        }
+        // 1 本指のときは処理済みにしない（マウス操作として扱われ、左ドラッグと同じく画像を書き出せる）
+    }
+
+    protected override void OnTouchMove(TouchEventArgs e)
+    {
+        base.OnTouchMove(e);
+        if (!_touchPositions.ContainsKey(e.TouchDevice.Id)) return;
+        _touchPositions[e.TouchDevice.Id] = e.GetTouchPoint(Host).Position;
+        if (_pinching)
+        {
+            UpdatePinch();
+            e.Handled = true;
+        }
+        else if (_suppressTouch)
+        {
+            e.Handled = true;
+        }
+    }
+
+    protected override void OnTouchUp(TouchEventArgs e)
+    {
+        base.OnTouchUp(e);
+        RemoveTouch(e.TouchDevice);
+    }
+
+    protected override void OnLostTouchCapture(TouchEventArgs e)
+    {
+        base.OnLostTouchCapture(e);
+        if (_pinching) RemoveTouch(e.TouchDevice);
+    }
+
+    private void RemoveTouch(TouchDevice device)
+    {
+        _touches.Remove(device);
+        _touchPositions.Remove(device.Id);
+        if (_pinching && _touches.Count < 2)
+        {
+            // 残った指でそのまま書き出しが始まらないよう、全部の指が離れるまでは無視する
+            _pinching = false;
+            _suppressTouch = _touches.Count > 0;
+            foreach (var touch in _touches) touch.Capture(null);
+        }
+        if (_touches.Count == 0) _suppressTouch = false;
+    }
+
+    private (Point A, Point B) PinchPoints()
+        => (_touchPositions[_touches[0].Id], _touchPositions[_touches[1].Id]);
+
+    private void BeginPinch()
+    {
+        _pinching = true;
+        _maybeDrag = false;
+        if (_panning)
+        {
+            _panning = false;
+            ReleaseMouseCapture();
+        }
+        foreach (var touch in _touches) touch.Capture(this);
+
+        var (a, b) = PinchPoints();
+        _pinchStartDistance = Math.Max(1, (a - b).Length);
+        _pinchStartZoom = _zoom;
+        var center = new Point((a.X + b.X) / 2, (a.Y + b.Y) / 2);
+        double s = DipScale;
+        // 2 本指の中点にある画像上の位置を、ピンチ中ずっと指の中点に合わせる
+        _pinchImagePoint = new Point((center.X - _offset.X) / s, (center.Y - _offset.Y) / s);
+        UpdateCursor();
+    }
+
+    private void UpdatePinch()
+    {
+        var (a, b) = PinchPoints();
+        double distance = Math.Max(1, (a - b).Length);
+        _zoom = Math.Clamp(_pinchStartZoom * distance / _pinchStartDistance, MinZoom, MaxZoom);
+        var center = new Point((a.X + b.X) / 2, (a.Y + b.Y) / 2);
+        double s = DipScale;
+        _offset = new Point(center.X - _pinchImagePoint.X * s, center.Y - _pinchImagePoint.Y * s);
+        _fit = false;
+        ClampOffset();
+        UpdateTransform();
     }
 
     protected override void OnMouseUp(MouseButtonEventArgs e)

@@ -7,21 +7,29 @@ namespace PSDToolViewer.Core.Imaging;
 /// <summary>PNG の読み書き（Windows Imaging Component を使用）。どのスレッドからでも呼べる。</summary>
 public static class PngCodec
 {
-    public static PixelImage Decode(Stream stream)
+    /// <param name="convertToSrgb">
+    /// true のとき、埋め込まれた色プロファイル（Display P3 など）に従って sRGB に変換する（利用者の PNG 用）。
+    /// false のときは画素の値をそのまま読む（.ptv 内の PNG 用）。
+    /// </param>
+    public static PixelImage Decode(Stream stream, bool convertToSrgb = false)
     {
         try
         {
+            // 変換は Windows に任せず、PSD の表示と同じ計算（ColorTransform）で行う
             var decoder = BitmapDecoder.Create(stream,
                 BitmapCreateOptions.IgnoreColorProfile | BitmapCreateOptions.PreservePixelFormat,
                 BitmapCacheOption.OnLoad);
             if (decoder.Frames.Count == 0) throw new DocumentFormatException("画像を読み込めませんでした。");
-            BitmapSource frame = decoder.Frames[0];
+            var first = decoder.Frames[0];
+            var profile = convertToSrgb ? ReadProfile(first) : null;
+            BitmapSource frame = first;
             if (frame.Format != PixelFormats.Bgra32)
                 frame = new FormatConvertedBitmap(frame, PixelFormats.Bgra32, null, 0);
             int w = frame.PixelWidth, h = frame.PixelHeight;
             var data = new byte[w * h * 4];
             frame.CopyPixels(data, w * 4, 0);
-            return new PixelImage(w, h, data);
+            var image = new PixelImage(w, h, data);
+            return profile is not null && ColorTransform.Create(profile, null) is { } transform ? transform.Apply(image) : image;
         }
         catch (Exception ex) when (ex is NotSupportedException or FileFormatException or ArgumentException or InvalidOperationException)
         {
@@ -29,10 +37,27 @@ public static class PngCodec
         }
     }
 
-    public static PixelImage Decode(string path)
+    /// <summary>画像に埋め込まれた色プロファイル（ICC）を取り出す。なければ null。</summary>
+    private static byte[]? ReadProfile(BitmapFrame frame)
+    {
+        try
+        {
+            if (frame.ColorContexts is not { Count: > 0 } contexts) return null;
+            using var profile = contexts[0].OpenProfileStream();
+            using var ms = new MemoryStream();
+            profile.CopyTo(ms);
+            return ms.ToArray();
+        }
+        catch (Exception ex) when (ex is IOException or NotSupportedException or InvalidOperationException or System.Runtime.InteropServices.COMException)
+        {
+            return null;
+        }
+    }
+
+    public static PixelImage Decode(string path, bool convertToSrgb = false)
     {
         using var stream = File.OpenRead(path);
-        return Decode(stream);
+        return Decode(stream, convertToSrgb);
     }
 
     public static void Encode(PixelImage image, Stream output)

@@ -1,0 +1,27 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+  <!--
+    PSDTool Viewer の MSI インストーラー。
+    build.ps1 から ProductVersion・PublishDir・ThumbnailDir・InstallerPlatform（x64 / arm64）を渡してビルドする。
+  -->
+  <PropertyGroup>
+    <ProductVersion Condition="'$(ProductVersion)' == ''">1.0.0</ProductVersion>
+    <InstallerPlatform Condition="'$(InstallerPlatform)' == ''">x64</InstallerPlatform>
+    <OutputName>PSDToolViewer-$(ProductVersion)-win-$(InstallerPlatform)</OutputName>
+    <!-- x64 と arm64 を続けて作るため、中間ファイルを分ける -->
+    <IntermediateOutputPath>obj\$(InstallerPlatform)\$(Configuration)\</IntermediateOutputPath>
+    <Cultures>ja-JP</Cultures>
+    <DefineConstants>ProductVersion=$(ProductVersion);PublishDir=$(PublishDir);ThumbnailDir=$(ThumbnailDir)</DefineConstants>
+    <!--
+      全ユーザー向け（perMachine）のスタートメニュー・デスクトップのショートカットを HKLM の値で管理すると出る検証。
+      ALLUSERS=1 では共通のフォルダに作られるため問題ない
+    -->
+    <SuppressIces>ICE38;ICE43;ICE57</SuppressIces>
+    <!-- 同じバージョンでの置き換えを許可している（AllowSameVersionUpgrades）ための警告 -->
+    <SuppressIces>$(SuppressIces);ICE61</SuppressIces>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.UI.wixext" Version="5.0.2" />
+    <PackageReference Include="WixToolset.Util.wixext" Version="5.0.2" />
+  </ItemGroup>
+</Project>

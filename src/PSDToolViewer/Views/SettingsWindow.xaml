@@ -37,6 +37,9 @@
             </ComboBox>
         </Grid>
         <CheckBox x:Name="ThumbnailBox" Content="レイヤー欄にサムネイルを表示する" Margin="0,4,0,0" />
+        <CheckBox x:Name="SoftwareRenderingBox" Content="ソフトウェアで描画する" Margin="0,8,0,0" />
+        <TextBlock Text="一部の端末では GPU で描画すると画像の赤と青が入れ替わるため、初期設定はオンです。動作が重いときはオフにすると速くなります（色や表示がおかしくならないか確認してください）。"
+                   TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource App.TextSecondary}" Margin="28,2,0,0" />
 
         <TextBlock Text="更新" FontSize="15" FontWeight="SemiBold" Margin="0,20,0,10" />
         <CheckBox x:Name="UpdateBox" Content="起動時に新しいバージョンを確認する" />

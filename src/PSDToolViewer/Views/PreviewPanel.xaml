@@ -1,7 +1,8 @@
 <UserControl x:Class="PSDToolViewer.Views.PreviewPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             Focusable="True" FocusVisualStyle="{x:Null}">
+             Focusable="True" FocusVisualStyle="{x:Null}"
+             Stylus.IsFlicksEnabled="False" Stylus.IsTapFeedbackEnabled="False">
     <Grid x:Name="Host" ClipToBounds="True" Background="{DynamicResource App.CheckerBrush}">
         <Canvas x:Name="ImageCanvas">
             <Image x:Name="PreviewImage" Source="{Binding PreviewBitmap}" Stretch="Fill" SnapsToDevicePixels="True" />

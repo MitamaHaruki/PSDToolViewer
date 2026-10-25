@@ -16,6 +16,8 @@ public partial class App : Application
         DispatcherUnhandledException += OnUnhandledException;
 
         _settings = AppSettings.Load();
+        if (_settings.SoftwareRendering)
+            System.Windows.Media.RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
         ThemeService.Initialize(_settings.Theme);
         MainViewModel.CleanupDragTemp();
 

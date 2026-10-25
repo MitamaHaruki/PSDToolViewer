@@ -111,6 +111,43 @@ public class FormatRoundTripTests : IDisposable
     }
 
     [Fact]
+    public void PtvContainsThumbnailOfSavedState()
+    {
+        var doc = new LayerDocument(1000, 500);
+        doc.Root.Add(new LayerItem("赤", TestImages.Solid(1000, 500, 255, 0, 0), 0, 0));
+        doc.Root.Add(new LayerItem("非表示の青", TestImages.Solid(1000, 500, 0, 0, 255), 0, 0) { IsVisible = false });
+        doc.Root.Children[0].IsVisible = true;
+        var path = Path.Combine(_dir, "thumb" + PtvFormat.Extension);
+        DocumentIO.Save(doc, path);
+
+        using var zip = System.IO.Compression.ZipFile.OpenRead(path);
+        // エクスプローラーの拡張が読めるよう、先頭に無圧縮で格納されている
+        var entry = zip.Entries[0];
+        Assert.Equal(PtvFormat.ThumbnailEntry, entry.FullName);
+        Assert.Equal(entry.Length, entry.CompressedLength);
+        using var stream = entry.Open();
+        using var ms = new MemoryStream();
+        stream.CopyTo(ms);
+        ms.Position = 0;
+        var thumbnail = PngCodec.Decode(ms);
+        Assert.Equal(PtvFormat.ThumbnailSize, thumbnail.Width);
+        Assert.Equal(256, thumbnail.Height);
+        // 表示中の赤だけが写っている
+        Assert.Equal((0, 0, 255, 255), TestImages.Pixel(thumbnail, 100, 100));
+    }
+
+    [Fact]
+    public void ImageScalerKeepsAspectAndColor()
+    {
+        var image = TestImages.Solid(300, 100, 10, 200, 30, 128);
+        var small = ImageScaler.Fit(image, 60);
+        Assert.Equal(60, small.Width);
+        Assert.Equal(20, small.Height);
+        Assert.Equal((30, 200, 10, 128), TestImages.Pixel(small, 5, 5));
+        Assert.Same(image, ImageScaler.Fit(image, 500));
+    }
+
+    [Fact]
     public void ExportWithTrimShiftsLayers()
     {
         var doc = new LayerDocument(100, 100);

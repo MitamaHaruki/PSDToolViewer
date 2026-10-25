@@ -3,15 +3,19 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using PSDToolViewer.Core.Imaging;
 using PSDToolViewer.Core.Model;
+using PSDToolViewer.Core.Rendering;
 
 namespace PSDToolViewer.Core.Formats.Ptv;
 
 /// <summary>
 /// 専用形式（.ptv）。ZIP の中に document.json と、レイヤー・マスクの PNG を格納する。
+/// 先頭には保存時の見た目の縮小画像（thumbnail.png、sRGB、無圧縮で格納）を置き、エクスプローラーのサムネイルに使う。
 /// </summary>
 public static class PtvFormat
 {
     public const string Extension = ".ptv";
+    public const string ThumbnailEntry = "thumbnail.png";
+    public const int ThumbnailSize = 512;
     private const string DocumentEntry = "document.json";
     private const int CurrentVersion = 1;
 
@@ -50,7 +54,10 @@ public static class PtvFormat
                 : document.ImageResources.Select(r => new ResourceModel { Id = r.Id, Name = r.Name, Data = Convert.ToBase64String(r.Data) }).ToList(),
         };
 
+        var thumbnail = CreateThumbnail(document, cancellationToken);
+
         using var zip = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true);
+        if (thumbnail is not null) WriteEntry(zip, ThumbnailEntry, thumbnail);
         var entry = zip.CreateEntry(DocumentEntry, CompressionLevel.Optimal);
         using (var stream = entry.Open())
             JsonSerializer.Serialize(stream, model, JsonOptions);
@@ -63,6 +70,19 @@ public static class PtvFormat
             if (masks[i] is { } maskPng) WriteEntry(zip, MaskPath(i), maskPng);
         }
         progress?.Report(1);
+    }
+
+    /// <summary>保存時の見た目（表示状態どおりの合成結果）を縮小した PNG。色プロファイルがあれば sRGB に変換する。</summary>
+    private static byte[]? CreateThumbnail(LayerDocument document, CancellationToken cancellationToken)
+    {
+        if (document.Width <= 0 || document.Height <= 0) return null;
+        var compositor = new Compositor();
+        var canvas = compositor.Render(RenderTree.Build(document), document.Width, document.Height, cancellationToken);
+        var image = ImageScaler.Fit(canvas.ToStraightImage(), ThumbnailSize);
+        compositor.Release(canvas);
+        if (document.ColorProfile is { } profile && ColorTransform.Create(profile, null) is { } transform)
+            image = transform.Apply(image);
+        return PngCodec.Encode(image);
     }
 
     private static void WriteEntry(ZipArchive zip, string path, byte[] data)

@@ -46,7 +46,10 @@ public sealed class MainViewModel : ObservableObject
     private LayerRow? _anchor;
     private LayerRow? _focusRow;
 
-    private WriteableBitmap? _previewBitmap;
+    /// <summary>ドキュメントの色プロファイルから sRGB への変換（表示・コピー・ドラッグ出力に使う）。不要なら null。</summary>
+    private ColorTransform? _displayTransform;
+
+    private BitmapSource? _previewBitmap;
     private Canvas? _lastCanvas;
     private int _renderVersion;
     private int _lastCanvasVersion = -1;
@@ -132,7 +135,7 @@ public sealed class MainViewModel : ObservableObject
     public bool ShowThumbnails => _settings.ShowThumbnails;
     public double RowHeight => _settings.ShowThumbnails ? 36 : 28;
 
-    public WriteableBitmap? PreviewBitmap
+    public BitmapSource? PreviewBitmap
     {
         get => _previewBitmap;
         private set => SetField(ref _previewBitmap, value);
@@ -303,13 +306,16 @@ public sealed class MainViewModel : ObservableObject
     private async Task ImportPngsAsync(IReadOnlyList<string> paths, LayerGroup? target, int index)
     {
         var sorted = paths.OrderBy(Path.GetFileName, Comparer<string?>.Create((a, b) => ImageImport.CompareNatural(a ?? string.Empty, b ?? string.Empty))).ToList();
+        var documentProfile = _document?.ColorProfile;
         var imported = await RunBusyAsync("画像を読み込み中…", (p, ct) =>
         {
+            // PNG は sRGB として読み込み、ドキュメントに色プロファイルがあればその色空間に合わせる
+            var toDocument = documentProfile is null ? null : ColorTransform.Create(null, documentProfile);
             var list = new List<ImportedLayer>();
             for (int i = 0; i < sorted.Count; i++)
             {
                 ct.ThrowIfCancellationRequested();
-                list.Add(ImageImport.LoadPng(sorted[i]));
+                list.Add(ImageImport.LoadPng(sorted[i], toDocument));
                 p.Report((i + 1.0) / sorted.Count);
             }
             return list;
@@ -353,6 +359,8 @@ public sealed class MainViewModel : ObservableObject
         _psdOverwriteConfirmed = false;
         _anchor = null;
         _focusRow = null;
+        _displayTransform = document?.ColorProfile is { } profile ? ColorTransform.Create(profile, null) : null;
+        Thumbnails.Transform = _displayTransform;
 
         RebuildRows();
         RequestRender();
@@ -812,44 +820,56 @@ public sealed class MainViewModel : ObservableObject
         var tree = RenderTree.Build(doc);
         int width = doc.Width, height = doc.Height;
         int version = ++_renderVersion;
+        var transform = _displayTransform;
         var cts = _renderCts = new CancellationTokenSource();
-        var task = Task.Run(() => _compositor.Render(tree, width, height, cts.Token), cts.Token);
+        var task = Task.Run(() =>
+        {
+            var canvas = _compositor.Render(tree, width, height, cts.Token);
+            // 合成はドキュメントの色空間で行い、表示用にだけ sRGB へ変換する
+            return (Canvas: canvas, Display: transform?.ApplyPremultiplied(canvas));
+        }, cts.Token);
         task.ContinueWith(t =>
         {
             if (t.Status != TaskStatus.RanToCompletion) return;
-            var canvas = t.Result;
+            var (canvas, display) = t.Result;
             if (version != _renderVersion)
             {
                 _compositor.Release(canvas);
                 return;
             }
-            ShowCanvas(canvas, version);
+            ShowCanvas(canvas, version, display);
         }, CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.FromCurrentSynchronizationContext());
     }
 
-    private void ShowCanvas(Canvas canvas, int version)
+    private void ShowCanvas(Canvas canvas, int version, byte[]? display)
     {
-        if (_previewBitmap is null || _previewBitmap.PixelWidth != canvas.Width || _previewBitmap.PixelHeight != canvas.Height)
-            PreviewBitmap = new WriteableBitmap(canvas.Width, canvas.Height, 96, 96, PixelFormats.Pbgra32, null);
-        _previewBitmap!.WritePixels(new Int32Rect(0, 0, canvas.Width, canvas.Height), canvas.Data, canvas.Stride, 0);
+        // WriteableBitmap は ARM 版 Windows の一部の GPU で赤と青が入れ替わって表示されるため（dotnet/wpf#11847 と同系統の不具合）、
+        // サムネイルと同じく毎回固定のビットマップを作って表示する
+        var bitmap = BitmapSource.Create(canvas.Width, canvas.Height, 96, 96, PixelFormats.Pbgra32, null, display ?? canvas.Data, canvas.Stride);
+        bitmap.Freeze();
+        PreviewBitmap = bitmap;
         if (_lastCanvas is not null && !ReferenceEquals(_lastCanvas, canvas)) _compositor.Release(_lastCanvas);
         _lastCanvas = canvas;
         _lastCanvasVersion = version;
     }
 
-    /// <summary>現在のプレビュー画像（非乗算済み）。<paramref name="trim"/> のとき透明な余白を除く。</summary>
+    /// <summary>
+    /// 現在のプレビュー画像（非乗算済み・sRGB）。<paramref name="trim"/> のとき透明な余白を除く。
+    /// 出力先のアプリは色プロファイルのない画像を sRGB として扱うため、ドキュメントの色空間から変換しておく。
+    /// </summary>
     public PixelImage? GetPreviewImage(bool trim)
     {
         if (_document is not { Width: > 0, Height: > 0 } doc) return null;
         if (_lastCanvas is null || _lastCanvasVersion != _renderVersion)
         {
             var canvas = _compositor.Render(RenderTree.Build(doc), doc.Width, doc.Height);
-            ShowCanvas(canvas, _renderVersion);
+            ShowCanvas(canvas, _renderVersion, _displayTransform?.ApplyPremultiplied(canvas));
         }
         var current = _lastCanvas!;
         var region = trim ? current.ComputeOpaqueBounds() : current.Rect;
         if (region.IsEmpty) region = current.Rect;
-        return current.ToStraightImage(region);
+        var image = current.ToStraightImage(region);
+        return _displayTransform?.Apply(image) ?? image;
     }
 
     public void CopyToClipboard()
@@ -942,29 +962,40 @@ public sealed class MainViewModel : ObservableObject
 
     // ---- 更新 ----
 
+    /// <summary>通知バーのボタンの文字。インストール版はその場で更新、ZIP 版などはダウンロードページを開く。</summary>
+    public string UpdateActionText
+    {
+        get => _updateActionText;
+        private set => SetField(ref _updateActionText, value);
+    }
+
+    private string _updateActionText = "更新して再起動";
+
+    /// <summary>更新のためにアプリを閉じる（未保存の確認は済んでいる）。</summary>
+    public event EventHandler? CloseRequested;
+
     public async Task CheckForUpdatesAsync(bool manual)
     {
-        if (!_updates.IsInstalled)
-        {
-            if (manual) _dialogs.ShowInfo("このビルドはインストール版ではないため、自動更新は利用できません。");
-            return;
-        }
         try
         {
             var version = await _updates.CheckAsync();
             if (version is not null)
             {
-                UpdateMessage = $"新しいバージョン {version} があります。";
+                bool installable = _updates.CanInstallPending;
+                UpdateActionText = installable ? "更新して再起動" : "ダウンロードページを開く";
+                UpdateMessage = installable
+                    ? $"新しいバージョン {version} があります。"
+                    : $"新しいバージョン {version} があります。ダウンロードページから入手してください。";
                 IsUpdateAvailable = true;
             }
             else if (manual)
             {
-                _dialogs.ShowInfo($"お使いのバージョン（{_updates.CurrentVersion}）は最新です。");
+                _dialogs.ShowInfo($"お使いのバージョン（{UpdateService.CurrentVersionText}）は最新です。");
             }
         }
         catch (Exception ex) when (manual)
         {
-            _dialogs.ShowError($"更新の確認に失敗しました。\n{ex.Message}");
+            _dialogs.ShowError($"更新の確認に失敗しました。インターネットに接続されているか確認してください。\n{ex.Message}");
         }
         catch (Exception)
         {
@@ -974,14 +1005,22 @@ public sealed class MainViewModel : ObservableObject
 
     private async Task ApplyUpdateAsync()
     {
+        if (!_updates.CanInstallPending)
+        {
+            UpdateService.OpenInBrowser(_updates.PendingPageUrl);
+            return;
+        }
         if (!await ConfirmDiscardAsync()) return;
         IsUpdateDownloading = true;
         UpdateMessage = "更新をダウンロードしています… 0%";
         try
         {
-            await _updates.DownloadAsync(p => _dispatcher.BeginInvoke(() => UpdateMessage = $"更新をダウンロードしています… {p}%"), CancellationToken.None);
+            var progress = new Progress<int>(p => UpdateMessage = $"更新をダウンロードしています… {p}%");
+            var installer = await _updates.DownloadAsync(progress);
+            UpdateMessage = "インストーラーを起動しています…";
             _settings.Save();
-            _updates.ApplyAndRestart();
+            UpdateService.StartInstallAndRestart(installer);
+            CloseRequested?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)
         {

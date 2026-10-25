@@ -1,0 +1,154 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <!-- すべてのユーザー向けに Program Files へインストールする（管理者権限が必要） -->
+  <Package Name="PSDTool Viewer"
+           Manufacturer="はるたまプロジェクト"
+           Version="$(var.ProductVersion)"
+           UpgradeCode="F65CFC04-6769-4B31-94CF-C1C851B95FB0"
+           Scope="perMachine"
+           Language="1041"
+           Codepage="932"
+           InstallerVersion="500"
+           Compressed="yes">
+
+    <SummaryInformation Description="PSDTool Viewer インストーラー" Manufacturer="はるたまプロジェクト" Codepage="932" />
+
+    <!--
+      新しいバージョンは古いバージョンを置き換える。機能の選択（関連付けなど）は引き継ぐ。
+      同じバージョンの作り直し（修正版）を入れた場合も置き換え、「アプリ」に 2 つ並ばないようにする
+    -->
+    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="より新しいバージョンの PSDTool Viewer がすでにインストールされています。" />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <Icon Id="AppIcon" SourceFile="..\src\PSDToolViewer\Assets\AppIcon.ico" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/MitamaHaruki/PSDToolViewer" />
+    <Property Id="ARPHELPLINK" Value="https://x.com/MitamaHaruki" />
+
+    <!-- 前回のインストール先を引き継ぐ（更新時に既定の場所へ戻らないように） -->
+    <Property Id="INSTALLFOLDER">
+      <RegistrySearch Id="FindInstallFolder" Root="HKLM" Key="Software\PSDToolViewer" Name="InstallDir" Type="raw" Bitness="always64" />
+    </Property>
+
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="PSDTool Viewer" />
+    </StandardDirectory>
+
+    <!-- ===== 機能 ===== -->
+    <Feature Id="Main" Title="PSDTool Viewer" Description="アプリ本体とスタートメニューのショートカットです。"
+             Level="1" AllowAbsent="no" Display="expand" ConfigurableDirectory="INSTALLFOLDER">
+      <ComponentRef Id="MainExecutable" />
+      <ComponentRef Id="AppRegistration" />
+      <ComponentRef Id="StartMenuShortcut" />
+      <ComponentRef Id="ThumbnailProvider" />
+
+      <Feature Id="FileAssociation" Title=".ptv ファイルの関連付け"
+               Description=".ptv ファイルをダブルクリックで PSDTool Viewer で開けるようにします。PSD ファイルは「プログラムから開く」の候補に追加します。"
+               Level="1">
+        <ComponentRef Id="FileAssociation" />
+      </Feature>
+
+      <Feature Id="PsdThumbnail" Title="PSD ファイルのサムネイル表示"
+               Description="エクスプローラーで PSD ファイルのサムネイル（保存時の見た目）を表示します。ほかのアプリの PSD 用サムネイル機能が入っている場合は、そちらが優先されます。"
+               Level="1">
+        <ComponentRef Id="PsdThumbnail" />
+      </Feature>
+
+      <Feature Id="DesktopShortcut" Title="デスクトップのショートカット" Description="デスクトップに PSDTool Viewer のショートカットを作ります。" Level="1">
+        <ComponentRef Id="DesktopShortcut" />
+      </Feature>
+    </Feature>
+
+    <!-- ===== 本体 ===== -->
+    <Component Id="MainExecutable" Directory="INSTALLFOLDER">
+      <File Id="AppExe" Source="$(var.PublishDir)PSDToolViewer.exe" KeyPath="yes" />
+      <!-- アプリはこの値で「インストール版か」を判定し、自動更新を有効にする -->
+      <RegistryValue Root="HKLM" Key="Software\PSDToolViewer" Name="InstallDir" Type="string" Value="[INSTALLFOLDER]" />
+      <RegistryValue Root="HKLM" Key="Software\PSDToolViewer" Name="Version" Type="string" Value="$(var.ProductVersion)" />
+    </Component>
+
+    <!--
+      以下では本体の場所を [INSTALLFOLDER]PSDToolViewer.exe で指す
+      （別の機能のコンポーネントから [#AppExe] を参照すると検証 ICE69 に引っかかるため）
+    -->
+
+    <!-- 「プログラムから開く」で選べるようにする -->
+    <Component Id="AppRegistration" Directory="INSTALLFOLDER">
+      <RegistryValue Root="HKLM" Key="Software\Classes\Applications\PSDToolViewer.exe" Name="FriendlyAppName" Type="string" Value="PSDTool Viewer" KeyPath="yes" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\Applications\PSDToolViewer.exe\SupportedTypes" Name=".psd" Type="string" Value="" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\Applications\PSDToolViewer.exe\SupportedTypes" Name=".ptv" Type="string" Value="" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\Applications\PSDToolViewer.exe\SupportedTypes" Name=".png" Type="string" Value="" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\Applications\PSDToolViewer.exe\shell\open\command" Type="string" Value="&quot;[INSTALLFOLDER]PSDToolViewer.exe&quot; &quot;%1&quot;" />
+    </Component>
+
+    <Component Id="StartMenuShortcut" Directory="ProgramMenuFolder">
+      <Shortcut Id="StartMenuShortcut" Name="PSDTool Viewer" Description="PSDTool 形式の PSD を表示・編集します"
+                Target="[INSTALLFOLDER]PSDToolViewer.exe" WorkingDirectory="INSTALLFOLDER" Icon="AppIcon" />
+      <RegistryValue Root="HKLM" Key="Software\PSDToolViewer" Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes" />
+    </Component>
+
+    <Component Id="DesktopShortcut" Directory="DesktopFolder">
+      <Shortcut Id="DesktopShortcut" Name="PSDTool Viewer" Description="PSDTool 形式の PSD を表示・編集します"
+                Target="[INSTALLFOLDER]PSDToolViewer.exe" WorkingDirectory="INSTALLFOLDER" Icon="AppIcon" />
+      <RegistryValue Root="HKLM" Key="Software\PSDToolViewer" Name="DesktopShortcut" Type="integer" Value="1" KeyPath="yes" />
+    </Component>
+
+    <!-- ===== エクスプローラーのサムネイル ===== -->
+    <!--
+      .ptv は先頭の縮小画像、.psd は統合画像（どちらも保存時の見た目）を表示する。
+      SystemFileAssociations に登録し、ほかのアプリが拡張子や ProgID に登録したサムネイル機能より優先しないようにする
+    -->
+    <Component Id="ThumbnailProvider" Directory="INSTALLFOLDER">
+      <File Id="ThumbnailDll" Source="$(var.ThumbnailDir)PSDToolViewer.Thumbnail.dll" KeyPath="yes" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\CLSID\{7CF7A05F-EE5E-4CAA-B07C-79F8C1795C96}" Type="string" Value="PSDTool Viewer サムネイル" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\CLSID\{7CF7A05F-EE5E-4CAA-B07C-79F8C1795C96}\InprocServer32" Type="string" Value="[#ThumbnailDll]" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\CLSID\{7CF7A05F-EE5E-4CAA-B07C-79F8C1795C96}\InprocServer32" Name="ThreadingModel" Type="string" Value="Apartment" />
+      <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Shell Extensions\Approved" Name="{7CF7A05F-EE5E-4CAA-B07C-79F8C1795C96}" Type="string" Value="PSDTool Viewer サムネイル" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.ptv\ShellEx\{e357fccd-a995-4576-b01f-234630154e96}" Type="string" Value="{7CF7A05F-EE5E-4CAA-B07C-79F8C1795C96}" />
+    </Component>
+
+    <Component Id="PsdThumbnail" Directory="INSTALLFOLDER">
+      <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.psd\ShellEx\{e357fccd-a995-4576-b01f-234630154e96}" Type="string" Value="{7CF7A05F-EE5E-4CAA-B07C-79F8C1795C96}" KeyPath="yes" />
+    </Component>
+
+    <!-- インストール後に、関連付けとサムネイル機能の変更をエクスプローラーへ知らせる -->
+    <CustomAction Id="RefreshShell" FileRef="ThumbnailDll" DllEntry="RefreshShell" Execute="immediate" Return="ignore" />
+    <InstallExecuteSequence>
+      <Custom Action="RefreshShell" After="InstallFinalize" Condition="NOT REMOVE~=&quot;ALL&quot;" />
+    </InstallExecuteSequence>
+
+    <!-- ===== 関連付け ===== -->
+    <Component Id="FileAssociation" Directory="INSTALLFOLDER">
+      <RegistryValue Root="HKLM" Key="Software\PSDToolViewer" Name="FileAssociation" Type="integer" Value="1" KeyPath="yes" />
+      <!-- .ptv はダブルクリックで開くようにする -->
+      <RegistryValue Root="HKLM" Key="Software\Classes\.ptv" Type="string" Value="PSDToolViewer.ptv" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\.ptv" Name="Content Type" Type="string" Value="application/x-psdtoolviewer" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\PSDToolViewer.ptv" Type="string" Value="PSDTool Viewer ファイル" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\PSDToolViewer.ptv\DefaultIcon" Type="string" Value="&quot;[INSTALLFOLDER]PSDToolViewer.exe&quot;,0" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\PSDToolViewer.ptv\shell\open\command" Type="string" Value="&quot;[INSTALLFOLDER]PSDToolViewer.exe&quot; &quot;%1&quot;" />
+      <!-- PSD は既定のアプリを変えず、「プログラムから開く」の候補に加えるだけにする -->
+      <RegistryValue Root="HKLM" Key="Software\Classes\PSDToolViewer.psd" Type="string" Value="PSD ファイル" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\PSDToolViewer.psd\DefaultIcon" Type="string" Value="&quot;[INSTALLFOLDER]PSDToolViewer.exe&quot;,0" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\PSDToolViewer.psd\shell\open\command" Type="string" Value="&quot;[INSTALLFOLDER]PSDToolViewer.exe&quot; &quot;%1&quot;" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\.psd\OpenWithProgids" Name="PSDToolViewer.psd" Type="string" Value="" />
+    </Component>
+
+    <!-- ===== 画面 ===== -->
+    <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
+    <WixVariable Id="WixUIBannerBmp" Value="Assets\Banner.bmp" />
+    <WixVariable Id="WixUIDialogBmp" Value="Assets\Dialog.bmp" />
+
+    <!-- 完了画面の「PSDTool Viewer を起動する」 -->
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="PSDTool Viewer を起動する" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
+    <Property Id="WixShellExecTarget" Value="[#AppExe]" />
+    <CustomAction Id="LaunchApplication" BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)" DllEntry="WixShellExec" Impersonate="yes" />
+
+    <UI>
+      <ui:WixUI Id="WixUI_FeatureTree" />
+      <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchApplication"
+               Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT Installed" />
+    </UI>
+  </Package>
+</Wix>

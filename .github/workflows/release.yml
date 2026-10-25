@@ -1,6 +1,7 @@
 name: Release
 
-# v1.2.3 のようなタグを push すると、ビルドして GitHub Releases に公開する（自動更新の配信元）
+# v1.2.3 のようなタグを push すると、インストーラー（MSI）とポータブル版を作って GitHub Releases に公開する。
+# アプリの自動更新は、ここで公開した MSI（PSDToolViewer-<版>-win-<x64|arm64>.msi）を取得して上書きインストールする
 on:
   push:
     tags: ['v*']
@@ -12,9 +13,9 @@ jobs:
   release:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
 
@@ -28,29 +29,27 @@ jobs:
       - name: Test
         run: dotnet test tests/PSDToolViewer.Core.Tests/PSDToolViewer.Core.Tests.csproj -c Release
 
-      - name: Publish
-        run: >
-          dotnet publish src/PSDToolViewer/PSDToolViewer.csproj -c Release -r win-x64 --self-contained true
-          -p:Version=${{ steps.version.outputs.version }} -o publish
+      - name: Build installers
+        shell: pwsh
+        run: ./installer/build.ps1 -Version ${{ steps.version.outputs.version }}
 
-      - name: Install vpk
-        run: dotnet tool install -g vpk --version 1.2.161
+      - name: Publish to GitHub Releases
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $version = '${{ steps.version.outputs.version }}'
+          $files = Get-ChildItem dist -File | Where-Object { $_.Name -like "PSDToolViewer-$version-*" } | ForEach-Object FullName
+          $notes = @"
+          ## ダウンロード
 
-      # 差分更新パッケージを作るため、前回のリリースを取得する（初回はないので失敗してよい）
-      - name: Download previous release
-        continue-on-error: true
-        run: vpk download github --repoUrl https://github.com/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }}
+          | ファイル | 内容 |
+          |---|---|
+          | PSDToolViewer-$version-win-x64.msi | インストーラー（Intel・AMD などの x64 端末） |
+          | PSDToolViewer-$version-win-arm64.msi | インストーラー（Snapdragon などの ARM 端末） |
+          | PSDToolViewer-$version-win-x64-portable.zip | ポータブル版（展開して PSDToolViewer.exe を実行） |
+          | PSDToolViewer-$version-win-arm64-portable.zip | ポータブル版（ARM 端末） |
 
-      - name: Pack
-        run: >
-          vpk pack --packId PSDToolViewer --packVersion ${{ steps.version.outputs.version }}
-          --packDir publish --mainExe PSDToolViewer.exe
-          --packTitle "PSDTool Viewer" --packAuthors MitamaHaruki
-          --icon src/PSDToolViewer/Assets/AppIcon.ico
-
-      - name: Upload to GitHub Releases
-        run: >
-          vpk upload github --repoUrl https://github.com/${{ github.repository }}
-          --token ${{ secrets.GITHUB_TOKEN }} --publish
-          --releaseName "PSDTool Viewer ${{ steps.version.outputs.version }}"
-          --tag ${{ github.ref_name }}
+          インストール版は起動時に新しいバージョンを確認し、更新できます。
+          "@
+          gh release create '${{ github.ref_name }}' $files --title "PSDTool Viewer $version" --notes $notes

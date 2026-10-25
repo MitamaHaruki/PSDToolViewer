@@ -37,6 +37,13 @@ public partial class MainWindow : Window
         Activated += (_, _) => TitleBar.Opacity = 1.0;
         Deactivated += (_, _) => TitleBar.Opacity = 0.6;
         ThemeService.ThemeChanged += (_, _) => PreviewPanel.SetBackgroundKind(_settings.PreviewBackground);
+        vm.CloseRequested += (_, _) =>
+        {
+            // 更新のための終了。未保存の確認は済んでいるのでそのまま閉じる
+            _closeConfirmed = true;
+            SavePlacement();
+            Close();
+        };
     }
 
     // ---- ウィンドウの枠 ----
@@ -242,14 +249,28 @@ public partial class MainWindow : Window
         _settings.LayerPanelWidth = CurrentLayerPanelWidth;
         dialog.ApplyTo(_settings);
         _settings.Save();
+        ApplyRenderMode();
         ThemeService.Apply(_settings.Theme);
         ApplyLayout();
         PreviewPanel.SetBackgroundKind(_settings.PreviewBackground);
         _vm.OnSettingsChanged();
     }
 
+    /// <summary>描画方法（GPU／ソフトウェア）を設定に合わせる。開いているウィンドウにもすぐ反映する。</summary>
+    private void ApplyRenderMode()
+    {
+        var mode = _settings.SoftwareRendering ? RenderMode.SoftwareOnly : RenderMode.Default;
+        RenderOptions.ProcessRenderMode = mode;
+        foreach (Window window in Application.Current.Windows)
+            if (PresentationSource.FromVisual(window) is HwndSource source)
+                source.CompositionTarget.RenderMode = mode;
+    }
+
     private void About_Click(object sender, RoutedEventArgs e)
         => new AboutWindow { Owner = this }.ShowDialog();
+
+    private void ColorHelp_Click(object sender, RoutedEventArgs e)
+        => new ColorHelpWindow { Owner = this }.ShowDialog();
 
     private void Exit_Click(object sender, RoutedEventArgs e) => Close();
 

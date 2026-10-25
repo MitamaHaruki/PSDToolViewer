@@ -1,0 +1,68 @@
+<Window x:Class="PSDToolViewer.Views.ColorHelpWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="色が変わって見える場合" Width="560" Height="600" MinWidth="420" MinHeight="360"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{DynamicResource App.WindowBackground}" Foreground="{DynamicResource App.Text}"
+        FontFamily="Yu Gothic UI, Segoe UI" FontSize="13">
+    <Window.Resources>
+        <Style x:Key="Heading" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,16,0,4" />
+        </Style>
+        <Style x:Key="Body" TargetType="TextBlock">
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="LineHeight" Value="20" />
+        </Style>
+        <Style x:Key="Note" TargetType="TextBlock" BasedOn="{StaticResource Body}">
+            <Setter Property="Foreground" Value="{DynamicResource App.TextSecondary}" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+    </Window.Resources>
+    <DockPanel Margin="24,20,24,20">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button Content="ディスプレイの設定を開く" MinWidth="88" Click="OpenDisplaySettings_Click" Margin="0,0,8,0" />
+            <Button Content="閉じる" MinWidth="88" IsCancel="True" IsDefault="True" />
+        </StackPanel>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="0,0,16,0">
+                <TextBlock Style="{StaticResource Body}">
+                    PSDTool Viewer は画像を sRGB の色で表示します。PSD や PNG に色プロファイル（Display P3、Adobe RGB など）が埋め込まれている場合も、表示・コピー・ドラッグでの出力の際に自動で sRGB に変換します（保存する PSD の内容は変えません）。
+                </TextBlock>
+                <TextBlock Style="{StaticResource Body}" Margin="0,10,0,0">
+                    それでも Surface Pro などで、表示する画像によって色や明るさが変わって見える場合は、端末側の自動補正が働いている可能性があります。この補正はアプリが描いた後に画面全体へかかるため、アプリからは止められません。次の設定を見直してください。
+                </TextBlock>
+
+                <TextBlock Style="{StaticResource Heading}" Text="1. コンテンツに応じた明るさの調整" />
+                <TextBlock Style="{StaticResource Body}">
+                    「設定」→「システム」→「ディスプレイ」→「明るさ」にある「コンテンツに基づいて明るさを変更する」をオフにします。表示している画像の明暗に合わせて、画面のコントラストが自動で変わるのを防ぎます。
+                </TextBlock>
+
+                <TextBlock Style="{StaticResource Heading}" Text="2. ディスプレイの色の設定（Surface など）" />
+                <TextBlock Style="{StaticResource Body}">
+                    「設定」→「システム」→「ディスプレイ」で「カラー プロファイル」を「sRGB」にします（「鮮やか」などでは色が強調されます）。周囲の明るさに合わせて色味を変える「アダプティブ カラー」もオフにします。
+                </TextBlock>
+
+                <TextBlock Style="{StaticResource Heading}" Text="3. Intel グラフィックスの省電力機能" />
+                <TextBlock Style="{StaticResource Body}">
+                    Intel のグラフィックスを搭載した端末では、「インテル グラフィックス・コマンド・センター」の「システム」→「電源」にある「ディスプレイ省電力テクノロジー」をオフにします（電源接続時・バッテリー駆動時の両方）。
+                </TextBlock>
+
+                <TextBlock Style="{StaticResource Heading}" Text="4. 夜間モード・自動カラー管理" />
+                <TextBlock Style="{StaticResource Body}">
+                    「ディスプレイ」の「夜間モード」がオンだと全体が黄色みを帯びます。また、「ディスプレイの詳細設定」に「アプリの色を自動的に管理する」がある端末では、オンにすると広色域の画面でも sRGB の色が正しく表示されます。
+                </TextBlock>
+
+                <TextBlock Style="{StaticResource Heading}" Text="5. 赤と青が入れ替わって表示される場合" />
+                <TextBlock Style="{StaticResource Body}">
+                    一部の ARM 版 Windows の端末（Snapdragon 搭載の Surface など）では、GPU による描画の不具合で、オレンジが青に見えるなど赤と青が入れ替わることがあります。「ツール」→「設定」の「ソフトウェアで描画する」をオンにしてください（初期設定はオンです）。
+                </TextBlock>
+
+                <TextBlock Style="{StaticResource Note}" Margin="0,16,0,0">
+                    ※ 項目名や場所は、Windows のバージョンや端末によって異なる場合があります。
+                </TextBlock>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</Window>

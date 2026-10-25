@@ -7,3 +7,5 @@ Releases/
 *.user
 *.suo
 TestResults/
+dist/
+artifacts/

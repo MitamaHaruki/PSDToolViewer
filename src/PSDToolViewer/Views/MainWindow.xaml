@@ -110,6 +110,7 @@
                         <MenuItem Header="設定(_S)..." Click="Settings_Click" />
                     </MenuItem>
                     <MenuItem Header="ヘルプ(_H)">
+                        <MenuItem Header="色が変わって見える場合(_C)..." Click="ColorHelp_Click" />
                         <MenuItem Header="更新を確認(_U)" Command="{Binding CheckUpdateCommand}" />
                         <Separator />
                         <MenuItem Header="バージョン情報(_A)..." Click="About_Click" />
@@ -155,7 +156,7 @@
                     <TextBlock DockPanel.Dock="Left" Text="&#xE895;" FontFamily="{StaticResource IconFont}" FontSize="16"
                                Foreground="{DynamicResource App.Accent}" VerticalAlignment="Center" Margin="0,0,10,0" />
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                        <Button Style="{StaticResource AccentButtonStyle}" Content="更新して再起動" Command="{Binding ApplyUpdateCommand}" Margin="0,0,6,0" />
+                        <Button Style="{StaticResource AccentButtonStyle}" Content="{Binding UpdateActionText}" Command="{Binding ApplyUpdateCommand}" Margin="0,0,6,0" />
                         <Button Style="{StaticResource SubtleTextButtonStyle}" Content="後で" Command="{Binding DismissUpdateCommand}" />
                     </StackPanel>
                     <TextBlock Text="{Binding UpdateMessage}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />

@@ -264,10 +264,16 @@
             <Setter.Value>
                 <ControlTemplate TargetType="CheckBox">
                     <Grid Background="Transparent" Width="22" Height="22">
-                        <Border x:Name="Box" Width="16" Height="16" CornerRadius="3" BorderThickness="1"
-                                BorderBrush="{DynamicResource App.ControlStroke}" Background="{DynamicResource App.ControlFill}" />
-                        <TextBlock x:Name="Mark" Text="&#xE73E;" FontFamily="{StaticResource IconFont}" FontSize="11"
-                                   Foreground="{DynamicResource App.AccentText}" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" />
+                        <!--
+                            枠とチェックを同じ 16×16 の枠に描き、ピクセル単位への丸めを止めて中心を一致させる。
+                            チェックはフォントの文字だと字形の余白で中心からずれるため、中心 (8,8) に合わせた線で描く
+                        -->
+                        <Grid Width="16" Height="16" HorizontalAlignment="Center" VerticalAlignment="Center" UseLayoutRounding="False">
+                            <Border x:Name="Box" CornerRadius="3" BorderThickness="1"
+                                    BorderBrush="{DynamicResource App.ControlStroke}" Background="{DynamicResource App.ControlFill}" />
+                            <Path x:Name="Mark" Data="M 3.5,8 L 6.5,11 L 12.5,5" Stroke="{DynamicResource App.AccentText}" StrokeThickness="1.6"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Visibility="Collapsed" />
+                        </Grid>
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsChecked" Value="True">
@@ -292,9 +298,16 @@
             <Setter.Value>
                 <ControlTemplate TargetType="RadioButton">
                     <Grid Background="Transparent" Width="22" Height="22">
-                        <Ellipse x:Name="Outer" Width="16" Height="16" StrokeThickness="1"
-                                 Stroke="{DynamicResource App.ControlStroke}" Fill="{DynamicResource App.ControlFill}" />
-                        <Ellipse x:Name="Dot" Width="7" Height="7" Fill="{DynamicResource App.AccentText}" Visibility="Collapsed" />
+                        <!--
+                            外側の円と内側の点を同じ 16×16 の枠に描き、ピクセル単位への丸めを止めて中心を一致させる
+                            （丸めると表示倍率 125%・150% などで点が半ピクセルずれる）
+                        -->
+                        <Grid Width="16" Height="16" HorizontalAlignment="Center" VerticalAlignment="Center" UseLayoutRounding="False">
+                            <Ellipse x:Name="Outer" StrokeThickness="1"
+                                     Stroke="{DynamicResource App.ControlStroke}" Fill="{DynamicResource App.ControlFill}" />
+                            <Ellipse x:Name="Dot" Width="8" Height="8" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                     Fill="{DynamicResource App.AccentText}" Visibility="Collapsed" />
+                        </Grid>
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsChecked" Value="True">

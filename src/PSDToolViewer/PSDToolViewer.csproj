@@ -17,10 +17,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Velopack" Version="1.2.161" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\PSDToolViewer.Core\PSDToolViewer.Core.csproj" />
   </ItemGroup>
 

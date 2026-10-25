@@ -23,8 +23,6 @@ internal static partial class NativeMethods
     public const int DWMSBT_NONE = 1;
     public const int DWMSBT_MAINWINDOW = 2;
 
-    public const uint SHCNE_ASSOCCHANGED = 0x08000000;
-
     public const int GWL_STYLE = -16;
     public const long WS_SYSMENU = 0x00080000;
 
@@ -39,9 +37,6 @@ internal static partial class NativeMethods
 
     [LibraryImport("user32.dll")]
     public static partial int GetSystemMetricsForDpi(int index, uint dpi);
-
-    [LibraryImport("shell32.dll")]
-    public static partial void SHChangeNotify(uint eventId, uint flags, nint item1, nint item2);
 
     public static void SetWindowAttribute(nint hwnd, int attribute, int value)
         => DwmSetWindowAttribute(hwnd, attribute, ref value, sizeof(int));

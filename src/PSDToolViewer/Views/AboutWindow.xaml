@@ -38,7 +38,7 @@
         <Border BorderThickness="0,1,0,0" BorderBrush="{DynamicResource App.Divider}" Margin="0,18,0,0" Padding="0,12,0,0">
             <StackPanel>
                 <TextBlock Text="MIT License" Foreground="{DynamicResource App.TextSecondary}" FontSize="12" />
-                <TextBlock Text="使用ライブラリ：Velopack（MIT License）" Foreground="{DynamicResource App.TextSecondary}" FontSize="12" Margin="0,2,0,0" />
+                <TextBlock Text="© 2026 三玉春樹 / はるたまプロジェクト" Foreground="{DynamicResource App.TextSecondary}" FontSize="12" Margin="0,2,0,0" />
             </StackPanel>
         </Border>
 

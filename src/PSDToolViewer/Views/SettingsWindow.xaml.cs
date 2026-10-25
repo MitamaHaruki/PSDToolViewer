@@ -12,6 +12,7 @@ public partial class SettingsWindow : Window
         ThemeBox.SelectedIndex = (int)settings.Theme;
         BackgroundBox.SelectedIndex = (int)settings.PreviewBackground;
         ThumbnailBox.IsChecked = settings.ShowThumbnails;
+        SoftwareRenderingBox.IsChecked = settings.SoftwareRendering;
         UpdateBox.IsChecked = settings.CheckUpdatesOnStartup;
         SourceInitialized += (_, _) => ThemeService.ApplyToWindow(this);
     }
@@ -22,6 +23,7 @@ public partial class SettingsWindow : Window
         settings.Theme = (ThemeSetting)Math.Max(0, ThemeBox.SelectedIndex);
         settings.PreviewBackground = (PreviewBackgroundKind)Math.Max(0, BackgroundBox.SelectedIndex);
         settings.ShowThumbnails = ThumbnailBox.IsChecked == true;
+        settings.SoftwareRendering = SoftwareRenderingBox.IsChecked == true;
         settings.CheckUpdatesOnStartup = UpdateBox.IsChecked == true;
     }
 
