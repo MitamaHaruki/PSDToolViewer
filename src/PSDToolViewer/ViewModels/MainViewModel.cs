@@ -843,8 +843,8 @@ public sealed class MainViewModel : ObservableObject
 
     private void ShowCanvas(Canvas canvas, int version, byte[]? display)
     {
-        // WriteableBitmap は ARM 版 Windows の一部の GPU で赤と青が入れ替わって表示されるため（dotnet/wpf#11847 と同系統の不具合）、
-        // サムネイルと同じく毎回固定のビットマップを作って表示する
+        // 合成結果は毎回固定のビットマップを作って表示する。
+        // ARM 版 Windows で GPU 描画すると赤と青が入れ替わる不具合は、これでは防げない（AppSettings.SoftwareRendering を参照）
         var bitmap = BitmapSource.Create(canvas.Width, canvas.Height, 96, 96, PixelFormats.Pbgra32, null, display ?? canvas.Data, canvas.Stride);
         bitmap.Freeze();
         PreviewBitmap = bitmap;
